@@ -224,6 +224,14 @@
   line-height: 1.6;
 }
 
+.key-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
 .key-status--ready {
   color: #11784a;
   font-weight: 700;

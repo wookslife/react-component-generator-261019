@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { usePersistentState } from './hooks/usePersistentState';
+import { useApiKeys } from './hooks/useApiKeys';
+import { addToHistory } from './utils/promptHistory';
 import { PromptInput } from './components/PromptInput';
 import { ComponentCard } from './components/ComponentCard';
 import { useComponentGenerator } from './hooks/useComponentGenerator';
@@ -11,9 +14,19 @@ const PROVIDER_CONFIG = {
 } as const;
 
 function App() {
-  const [apiKey, setApiKey] = useState('');
+  const { apiKeys, setApiKey, remember, setRemember } = useApiKeys();
   const [showKey, setShowKey] = useState(false);
-  const [provider, setProvider] = useState<Provider>('google');
+  const [provider, setProvider] = usePersistentState<Provider>(
+    'rcg:provider',
+    'google',
+    (raw) => (raw === 'anthropic' || raw === 'google' ? raw : 'google'),
+  );
+  const [promptHistory, setPromptHistory] = usePersistentState<string[]>(
+    'rcg:promptHistory',
+    [],
+    (raw) => (Array.isArray(raw) ? raw.filter((p) => typeof p === 'string') : []),
+  );
+  const apiKey = apiKeys[provider];
   const [envKeys, setEnvKeys] = useState<Record<Provider, boolean>>({
     anthropic: false,
     google: false,
@@ -35,12 +48,12 @@ function App() {
       alert(`${PROVIDER_CONFIG[provider].label} API 키를 입력하거나 .env에 설정해주세요.`);
       return;
     }
+    setPromptHistory((prev) => addToHistory(prev, prompt));
     generate(prompt, apiKey || undefined, provider);
   };
 
   const handleProviderChange = (newProvider: Provider) => {
     setProvider(newProvider);
-    setApiKey('');
   };
 
   const activeProvider = PROVIDER_CONFIG[provider].label;
@@ -76,7 +89,11 @@ function App() {
             <h2 className="titlebar-title" id="composer-title">새 컴포넌트</h2>
           </div>
           <div className="window-body">
-            <PromptInput onGenerate={handleGenerate} isLoading={isLoading} />
+            <PromptInput
+              onGenerate={handleGenerate}
+              isLoading={isLoading}
+              history={promptHistory}
+            />
           </div>
         </section>
 
@@ -107,7 +124,7 @@ function App() {
                   id="api-key"
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => setApiKey(provider, e.target.value)}
                   placeholder={
                     hasEnvKey
                       ? '서버 키 사용 중 (직접 입력으로 덮어쓰기 가능)'
@@ -125,6 +142,19 @@ function App() {
               <p className={`key-status ${hasEnvKey ? 'key-status--ready' : ''}`}>
                 {hasEnvKey ? '.env 키가 연결되어 있습니다.' : '직접 입력하거나 서버 환경변수를 설정하세요.'}
               </p>
+              <label className="key-remember">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                이 브라우저에 API 키 저장
+              </label>
+              {remember && (
+                <p className="key-status">
+                  키가 평문으로 저장됩니다. 공용 PC에서는 사용하지 마세요.
+                </p>
+              )}
             </div>
           </div>
         </aside>
