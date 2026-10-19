@@ -785,3 +785,29 @@ button:focus-visible {
     transform: none;
   }
 }
+
+/* ---------- 프롬프트 길이 ---------- */
+
+.prompt-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+}
+
+.prompt-error {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.prompt-counter {
+  margin-left: auto;
+  font-family: var(--mono);
+}
+
+.prompt-counter.is-over {
+  background: var(--pink);
+  border: 2px solid var(--ink);
+  padding: 0 6px;
+  font-weight: 700;
+}

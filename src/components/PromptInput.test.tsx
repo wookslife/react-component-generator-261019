@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PromptInput } from './PromptInput';
 
@@ -25,5 +25,33 @@ describe('PromptInput', () => {
   it('로딩 중에는 생성 버튼이 비활성이고 "생성 중..." 을 보여준다', () => {
     render(<PromptInput onGenerate={vi.fn()} isLoading={true} />);
     expect(screen.getByRole('button', { name: '생성 중...' })).toBeDisabled();
+  });
+
+  it('500자를 넘으면 에러 메시지를 보여주고 생성 버튼이 비활성이다', () => {
+    render(<PromptInput onGenerate={vi.fn()} isLoading={false} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'a'.repeat(501) } });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('프롬프트는 500자 이하로 입력해주세요.');
+    expect(screen.getByRole('button', { name: '컴포넌트 생성' })).toBeDisabled();
+  });
+
+  it('500자를 넘은 상태에서 Ctrl+Enter를 눌러도 onGenerate가 호출되지 않는다', () => {
+    const onGenerate = vi.fn();
+    render(<PromptInput onGenerate={onGenerate} isLoading={false} />);
+    const textbox = screen.getByRole('textbox');
+
+    fireEvent.change(textbox, { target: { value: 'a'.repeat(501) } });
+    fireEvent.keyDown(textbox, { key: 'Enter', ctrlKey: true });
+
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it('입력 중인 글자 수를 "현재/500"으로 보여준다', () => {
+    render(<PromptInput onGenerate={vi.fn()} isLoading={false} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'abc' } });
+
+    expect(screen.getByText('3/500')).toBeInTheDocument();
   });
 });
