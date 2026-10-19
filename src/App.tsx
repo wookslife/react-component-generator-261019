@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { usePersistentState } from './hooks/usePersistentState';
+import { addToHistory } from './utils/promptHistory';
 import { PromptInput } from './components/PromptInput';
 import { ComponentCard } from './components/ComponentCard';
 import { useComponentGenerator } from './hooks/useComponentGenerator';
@@ -10,10 +12,26 @@ const PROVIDER_CONFIG = {
   google: { label: 'Google', placeholder: 'AIza...' },
 } as const;
 
+const EMPTY_KEYS: Record<Provider, string> = { anthropic: '', google: '' };
+
 function App() {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKeys, setApiKeys] = usePersistentState<Record<Provider, string>>(
+    'rcg:apiKeys',
+    EMPTY_KEYS,
+    (raw) => ({ ...EMPTY_KEYS, ...(raw as Partial<Record<Provider, string>>) }),
+  );
   const [showKey, setShowKey] = useState(false);
-  const [provider, setProvider] = useState<Provider>('google');
+  const [provider, setProvider] = usePersistentState<Provider>(
+    'rcg:provider',
+    'google',
+    (raw) => (raw === 'anthropic' || raw === 'google' ? raw : 'google'),
+  );
+  const [promptHistory, setPromptHistory] = usePersistentState<string[]>(
+    'rcg:promptHistory',
+    [],
+    (raw) => (Array.isArray(raw) ? raw.filter((p) => typeof p === 'string') : []),
+  );
+  const apiKey = apiKeys[provider];
   const [envKeys, setEnvKeys] = useState<Record<Provider, boolean>>({
     anthropic: false,
     google: false,
@@ -35,12 +53,12 @@ function App() {
       alert(`${PROVIDER_CONFIG[provider].label} API 키를 입력하거나 .env에 설정해주세요.`);
       return;
     }
+    setPromptHistory((prev) => addToHistory(prev, prompt));
     generate(prompt, apiKey || undefined, provider);
   };
 
   const handleProviderChange = (newProvider: Provider) => {
     setProvider(newProvider);
-    setApiKey('');
   };
 
   const activeProvider = PROVIDER_CONFIG[provider].label;
@@ -76,7 +94,11 @@ function App() {
             <h2 className="titlebar-title" id="composer-title">새 컴포넌트</h2>
           </div>
           <div className="window-body">
-            <PromptInput onGenerate={handleGenerate} isLoading={isLoading} />
+            <PromptInput
+              onGenerate={handleGenerate}
+              isLoading={isLoading}
+              history={promptHistory}
+            />
           </div>
         </section>
 
@@ -107,7 +129,7 @@ function App() {
                   id="api-key"
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
                   placeholder={
                     hasEnvKey
                       ? '서버 키 사용 중 (직접 입력으로 덮어쓰기 가능)'
