@@ -3,11 +3,19 @@ import type { GeneratedComponent, Provider } from '../types';
 import { usePersistentState } from './usePersistentState';
 
 const COMPONENTS_KEY = 'rcg:components';
+export const MAX_COMPONENTS = 50;
 
 // JSON으로 저장되면 createdAt이 문자열이 되므로 Date로 되돌린다.
 function reviveComponents(raw: unknown): GeneratedComponent[] {
   if (!Array.isArray(raw)) return [];
-  return raw.map((c) => ({ ...c, createdAt: new Date(c.createdAt) }));
+  return raw.flatMap((c): GeneratedComponent[] => {
+    if (typeof c !== 'object' || c === null) return [];
+    const { id, prompt, code, createdAt } = c as Record<string, unknown>;
+    if (typeof id !== 'string' || typeof prompt !== 'string' || typeof code !== 'string') return [];
+    const date = new Date(createdAt as string);
+    if (Number.isNaN(date.getTime())) return [];
+    return [{ id, prompt, code, createdAt: date }];
+  });
 }
 
 interface UseComponentGeneratorReturn {
@@ -52,7 +60,7 @@ export function useComponentGenerator(): UseComponentGeneratorReturn {
         createdAt: new Date(),
       };
 
-      setComponents((prev) => [newComponent, ...prev]);
+      setComponents((prev) => [newComponent, ...prev].slice(0, MAX_COMPONENTS));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);

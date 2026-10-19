@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePersistentState } from './hooks/usePersistentState';
+import { useApiKeys } from './hooks/useApiKeys';
 import { addToHistory } from './utils/promptHistory';
 import { PromptInput } from './components/PromptInput';
 import { ComponentCard } from './components/ComponentCard';
@@ -12,14 +13,8 @@ const PROVIDER_CONFIG = {
   google: { label: 'Google', placeholder: 'AIza...' },
 } as const;
 
-const EMPTY_KEYS: Record<Provider, string> = { anthropic: '', google: '' };
-
 function App() {
-  const [apiKeys, setApiKeys] = usePersistentState<Record<Provider, string>>(
-    'rcg:apiKeys',
-    EMPTY_KEYS,
-    (raw) => ({ ...EMPTY_KEYS, ...(raw as Partial<Record<Provider, string>>) }),
-  );
+  const { apiKeys, setApiKey, remember, setRemember } = useApiKeys();
   const [showKey, setShowKey] = useState(false);
   const [provider, setProvider] = usePersistentState<Provider>(
     'rcg:provider',
@@ -129,7 +124,7 @@ function App() {
                   id="api-key"
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
+                  onChange={(e) => setApiKey(provider, e.target.value)}
                   placeholder={
                     hasEnvKey
                       ? '서버 키 사용 중 (직접 입력으로 덮어쓰기 가능)'
@@ -147,6 +142,19 @@ function App() {
               <p className={`key-status ${hasEnvKey ? 'key-status--ready' : ''}`}>
                 {hasEnvKey ? '.env 키가 연결되어 있습니다.' : '직접 입력하거나 서버 환경변수를 설정하세요.'}
               </p>
+              <label className="key-remember">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                이 브라우저에 API 키 저장
+              </label>
+              {remember && (
+                <p className="key-status">
+                  키가 평문으로 저장됩니다. 공용 PC에서는 사용하지 마세요.
+                </p>
+              )}
             </div>
           </div>
         </aside>
